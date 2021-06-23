@@ -5,6 +5,7 @@ UE4 Plugin to execute trained PyTorch modules
 
 1. Download PyTorch C++ distributions: https://pytorch.org/cppdocs/installing.html
 2. Copy DLLs from lib directory to SimplePyTorch/Source/ThirdParty/pytorch/Binaries/Win64:
+
 asmjit.dll, c10.dll, caffe2_detectron_ops.dll, caffe2_module_test_dynamic.dll, fbgemm.dll, fbjni.dll, libiomp5md.dll, libiompstubs5md.dll, torch.dll, torch_cpu.dll, torch_global_deps.dll, uv.dll.
 3. Copy a whole plugin to [your UE4 project]/Plugins directory and recompile.
 
