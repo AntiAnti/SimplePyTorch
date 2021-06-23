@@ -13,18 +13,29 @@ asmjit.dll, c10.dll, caffe2_detectron_ops.dll, caffe2_module_test_dynamic.dll, f
 ------- Usage -------
 
 // Create module UObject
+
 auto TorchModule = USimpleTorchModule::CreateSimpleTorchModule(this);
 
+
 // Load script model
+
 TorchModule->LoadTorchScriptModel(ModelFileFile);
 
+
 // Fill input tensor
+
 FSimpleTorchTensor Inputs = FSimpleTorchTensor( { 1, 2 } );
+
 Inputs[0][0] = 1.f; Inputs[0][1] = 1.f;
 
+
 // call model method
+
 FSimpleTorchTensor Outputs = FSimpleTorchTensor( { 1 } );
+
 TorchModule->ExecuteModelMethod("forward", Inputs, Outputs);
 
+
 // read result
+
 UE_LOG(LogTemp, Log, TEXT("Returned value: %f"), Outputs[0]);
