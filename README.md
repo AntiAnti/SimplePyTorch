@@ -38,4 +38,4 @@ TorchModule->ExecuteModelMethod("forward", Inputs, Outputs);
 
 // read result
 
-UE_LOG(LogTemp, Log, TEXT("Returned value: %f"), Outputs[0]);
+UE_LOG(LogTemp, Log, TEXT("Returned value: %f"), Outputs[0].Item());
