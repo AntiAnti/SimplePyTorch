@@ -20,6 +20,10 @@ void FSimplePyTorchModule::StartupModule()
 	if (ThisPlugin.IsValid())
 	{
 		FilePath = FPaths::ConvertRelativePathToFull(ThisPlugin->GetBaseDir());
+
+		FString PluginBinariesDir = FilePath / TEXT("Source/ThirdParty/pytorch") / szBinaries / szPlatform;
+		UE_LOG(LogTemp, Log, TEXT("PyTorch third-party dlls directory: %s"), *PluginBinariesDir);
+		FPlatformProcess::PushDllDirectory(*PluginBinariesDir);
 	}
 #else
 	FilePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
