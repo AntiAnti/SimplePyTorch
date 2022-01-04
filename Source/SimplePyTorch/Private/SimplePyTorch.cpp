@@ -1,5 +1,5 @@
 // VR IK Body Plugin
-// (c) Yuri N Kalinin, 2021, ykasczc@gmail.com. All right reserved.
+// (c) Yuri N Kalinin, 2021-2022, ykasczc@gmail.com. All right reserved.
 
 #include "SimplePyTorch.h"
 #include "HAL/PlatformProcess.h"
@@ -14,27 +14,32 @@ void FSimplePyTorchModule::StartupModule()
 	FString FilePath;
 	const FString szBinaries = TEXT("Binaries");
 	const FString szPlatform = TEXT("Win64");
-	
+
 #if WITH_EDITOR
 	auto ThisPlugin = IPluginManager::Get().FindPlugin(TEXT("SimplePyTorch"));
 	if (ThisPlugin.IsValid())
 	{
 		FilePath = FPaths::ConvertRelativePathToFull(ThisPlugin->GetBaseDir());
-
-		FString PluginBinariesDir = FilePath / TEXT("Source/ThirdParty/pytorch") / szBinaries / szPlatform;
-		UE_LOG(LogTemp, Log, TEXT("PyTorch third-party dlls directory: %s"), *PluginBinariesDir);
-		FPlatformProcess::PushDllDirectory(*PluginBinariesDir);
+		FilePath = FilePath / TEXT("Source/ThirdParty/pytorch") / szBinaries / szPlatform;
+	}
+	else
+	{
+		FilePath = FPaths::ProjectDir() / TEXT("Binaries/ThirdParty/PyTorch");
 	}
 #else
-	FilePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
-#endif	
-	FilePath = FilePath / szBinaries / szPlatform / TEXT("torchscript_wrapper.dll");
+	FilePath = FPaths::ProjectDir() / TEXT("Binaries/ThirdParty/PyTorch");
+#endif
+	FPlatformProcess::PushDllDirectory(*FilePath);
+	FilePath = FilePath / TEXT("torchscript_wrapper.dll");
+
 	WrapperDllHandle = NULL;
 	bDllLoaded = false;
-
+	
 #if PLATFORM_WINDOWS
 	if (FPaths::FileExists(FilePath))
 	{
+		UE_LOG(LogTemp, Log, TEXT("SimplePyTorchModule: Loading torch wrapper from %s"), *FilePath);
+
 		WrapperDllHandle = FPlatformProcess::GetDllHandle(*FilePath);
 
 		if (WrapperDllHandle != NULL)
@@ -91,6 +96,14 @@ void FSimplePyTorchModule::ShutdownModule()
 	if (WrapperDllHandle != NULL)
 	{
 		FPlatformProcess::FreeDllHandle(WrapperDllHandle);
+		WrapperDllHandle = NULL;
+		bDllLoaded = false;
+		FuncTSW_LoadScriptModel = NULL;
+		FuncTSW_CheckModel = NULL;
+		FuncTSW_Forward1d = NULL;
+		FuncTSW_ForwardTensor = NULL;
+		FuncTSW_ForwardPass_Def = NULL;
+		FuncTSW_Execute_Def = NULL;
 	}
 }
 

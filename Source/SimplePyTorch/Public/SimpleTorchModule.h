@@ -1,5 +1,5 @@
 // VR IK Body Plugin
-// (c) Yuri N Kalinin, 2021, ykasczc@gmail.com. All right reserved.
+// (c) Yuri N Kalinin, 2021-2022, ykasczc@gmail.com. All right reserved.
 
 #pragma once
 
@@ -53,7 +53,7 @@ protected:
 	void InitAddressSpace();
 
 	/** Get flat address in Data from multidimensional address */
-	int32 GetAddress(TArray<int32> Address) const;
+	int32 GetAddress(TSet<int32> Address) const;
 public:
 
 	FSimpleTorchTensor()
@@ -62,7 +62,7 @@ public:
 		, DataSize(0)
 		, ParentTensor(nullptr)
 	{}
-	FSimpleTorchTensor(FSimpleTorchTensor* Parent, TArray<int32> SubAddress)
+	FSimpleTorchTensor(FSimpleTorchTensor* Parent, TSet<int32> SubAddress)
 		: Data(NULL)
 		, bDataOwner(true)
 		, DataSize(0)
@@ -70,7 +70,7 @@ public:
 	{
 		CreateAsChild(Parent, SubAddress);
 	}
-	FSimpleTorchTensor(TArray<int32> Dimensions)
+	FSimpleTorchTensor(TSet<int32> Dimensions)
 		: Data(NULL)
 		, bDataOwner(true)
 		, DataSize(0)
@@ -87,10 +87,10 @@ public:
 	void Cleanup();
 
 	// Set dimensions and allocate memory
-	bool Create(TArray<int32> TensorDimensions);
+	bool Create(TSet<int32> TensorDimensions);
 
 	// Create tensor as a subtensor in another tensor (share the same memory)
-	bool CreateAsChild(FSimpleTorchTensor* Parent, TArray<int32> Address);
+	bool CreateAsChild(FSimpleTorchTensor* Parent, TSet<int32> Address);
 
 	// Is tensor initialized?
 	bool IsValid() const { return Data != NULL; }
@@ -99,7 +99,7 @@ public:
 	bool IsDataOwner() const { return bDataOwner; }
 
 	// Get current tensor dimensions
-	TArray<int32> GetDimensions() const;
+	TSet<int32> GetDimensions() const;
 
 	// Get number of itemes in flat array
 	int32 GetDataSize() const { return DataSize; }
@@ -112,11 +112,11 @@ public:
 	float* GetRawData() const { return Data; }
 
 	// Convert multidimensional address to flat address
-	int32 GetRawAddress(TArray<int32> Address) const { return GetAddress(Address); }
+	int32 GetRawAddress(TSet<int32> Address) const { return GetAddress(Address); }
 
 	// Get reference to single float value with address
-	float* GetCell(TArray<int32> Address);
-	float GetValue(TArray<int32> Address) const;
+	float* GetCell(TSet<int32> Address);
+	float GetValue(TSet<int32> Address) const;
 
 	/* Create float array. Only works for tensor with one dimension.
 	* Ex: auto p = FSimpleTorchTensor({ 4, 12 });
@@ -139,7 +139,7 @@ public:
 
 	// Change dimensions.
 	// Only keeps data if new overall size is equal to old sizse
-	bool Reshape(TArray<int32> NewShape);
+	bool Reshape(TSet<int32> NewShape);
 
 	// Create copy of this tensor
 	FSimpleTorchTensor Detach();

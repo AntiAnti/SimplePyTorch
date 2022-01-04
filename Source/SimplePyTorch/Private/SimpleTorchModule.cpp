@@ -1,5 +1,5 @@
 // VR IK Body Plugin
-// (c) Yuri N Kalinin, 2021, ykasczc@gmail.com. All right reserved.
+// (c) Yuri N Kalinin, 2021-2022, ykasczc@gmail.com. All right reserved.
 
 #include "SimpleTorchModule.h"
 #include "SimplePyTorch.h"
@@ -32,7 +32,9 @@ void USimpleTorchModule::BeginDestroy()
 
 USimpleTorchModule* USimpleTorchModule::CreateSimpleTorchModule(UObject* InParent)
 {
-	return NewObject<USimpleTorchModule>(InParent);
+	return InParent
+		? NewObject<USimpleTorchModule>(InParent)
+		: NewObject<USimpleTorchModule>();
 }
 
 bool USimpleTorchModule::LoadTorchScriptModel(FString FileName)
@@ -71,9 +73,9 @@ bool USimpleTorchModule::IsTorchModelLoaded() const
 	FSimplePyTorchModule& Module = FModuleManager::GetModuleChecked<FSimplePyTorchModule>(TEXT("SimplePyTorch"));
 
 	bool bResult = false;
-	if (Module.bDllLoaded)
+	if (Module.bDllLoaded && Module.FuncTSW_CheckModel)
 	{
-		return Module.FuncTSW_CheckModel(ModelId);
+		bResult = Module.FuncTSW_CheckModel(ModelId);
 	}
 
 	return bResult;
@@ -91,7 +93,7 @@ bool USimpleTorchModule::ExecuteModelMethod(const FString& MethodName, const FSi
 	bool bResult = false;
 	if (Module.bDllLoaded && Buffer != NULL && OutData.IsDataOwner())
 	{
-		TArray<int> InDims = InData.GetDimensions();
+		TArray<int> InDims = InData.GetDimensions().Array();
 
 		float* pOutData = OutData.IsValid()
 			? OutData.GetRawData()
@@ -100,21 +102,25 @@ bool USimpleTorchModule::ExecuteModelMethod(const FString& MethodName, const FSi
 		int OutDimsCount = 0;
 		if (MethodName == TEXT("forward"))
 		{
+			if (Module.FuncTSW_ForwardPass_Def == NULL) return false;
+
 			Module.FuncTSW_ForwardPass_Def(ModelId, InData.GetRawData(), InDims.GetData(), InDims.Num(),
 				pOutData, BufferDims, &OutDimsCount);
 		}
 		else
 		{
+			if (Module.FuncTSW_Execute_Def == NULL) return false;
+
 			Module.FuncTSW_Execute_Def(ModelId, TCHAR_TO_ANSI(*MethodName), InData.GetRawData(), InDims.GetData(), InDims.Num(),
 				pOutData, BufferDims, &OutDimsCount);
 		}
 
-		bResult = (OutDimsCount > 0);
+		bResult = (OutDimsCount > 0) && pOutData != NULL && BufferDims != NULL;
 		if (bResult)
 		{
-			TArray<int32> OldOutDims = OutData.GetDimensions();
+			TArray<int32> OldOutDims = OutData.GetDimensions().Array();
 			bool bOutTensorMatches = (OutDimsCount == OutData.GetDimensions().Num());
-			TArray<int32> NewOutDims;
+			TSet<int32> NewOutDims;
 
 			int32 Length = 1;
 			for (int i = 0; i < OutDimsCount; i++)
@@ -197,14 +203,14 @@ void FSimpleTorchTensor::Cleanup()
 	}
 }
 
-int32 FSimpleTorchTensor::GetAddress(TArray<int32> Address) const
+int32 FSimpleTorchTensor::GetAddress(TSet<int32> Address) const
 {
 	if (!Data)
 	{		
 		return INDEX_NONE;
 	}
 
-	TArray<int32> AddrArray = Address;
+	TArray<int32> AddrArray = Address.Array();
 	int32 Addr = 0;
 	for (int32 i = 0; i < AddressMultipliersCache.Num(); i++)
 	{
@@ -220,7 +226,7 @@ int32 FSimpleTorchTensor::GetAddress(TArray<int32> Address) const
 	return Addr;
 }
 
-bool FSimpleTorchTensor::Create(TArray<int32> TensorDimensions)
+bool FSimpleTorchTensor::Create(TSet<int32> TensorDimensions)
 {
 	if (Data)
 	{
@@ -235,7 +241,7 @@ bool FSimpleTorchTensor::Create(TArray<int32> TensorDimensions)
 
 	if (DataSize == 0) return false;
 
-	Dimensions = TensorDimensions;
+	Dimensions = TensorDimensions.Array();
 	InitAddressSpace();
 
 	Data = new float[DataSize];
@@ -244,7 +250,7 @@ bool FSimpleTorchTensor::Create(TArray<int32> TensorDimensions)
 	return true;
 }
 
-bool FSimpleTorchTensor::CreateAsChild(FSimpleTorchTensor* Parent, TArray<int32> Address)
+bool FSimpleTorchTensor::CreateAsChild(FSimpleTorchTensor* Parent, TSet<int32> Address)
 {
 	bDataOwner = false;
 
@@ -298,9 +304,9 @@ bool FSimpleTorchTensor::CreateAsChild(FSimpleTorchTensor* Parent, TArray<int32>
 	return true;
 }
 
-TArray<int32> FSimpleTorchTensor::GetDimensions() const
+TSet<int32> FSimpleTorchTensor::GetDimensions() const
 {
-	TArray<int32> t;
+	TSet<int32> t;
 	for (const auto& d : Dimensions)
 		t.Add(d);
 
@@ -331,13 +337,13 @@ float* FSimpleTorchTensor::GetRawData(int32* Size) const
 	}
 }
 
-float* FSimpleTorchTensor::GetCell(TArray<int32> Address)
+float* FSimpleTorchTensor::GetCell(TSet<int32> Address)
 {
 	int32 Addr = GetAddress(Address);
 	return Addr == INDEX_NONE ? NULL : &Data[Addr];
 }
 
-float FSimpleTorchTensor::GetValue(TArray<int32> Address) const
+float FSimpleTorchTensor::GetValue(TSet<int32> Address) const
 {
 	int32 Addr = GetAddress(Address);
 	return Addr == INDEX_NONE ? 0 : Data[Addr];
@@ -373,7 +379,7 @@ bool FSimpleTorchTensor::FromArray(const TArray<float>& InData)
 	return false;
 }
 
-bool FSimpleTorchTensor::Reshape(TArray<int32> NewShape)
+bool FSimpleTorchTensor::Reshape(TSet<int32> NewShape)
 {
 	if (NewShape.Num() == 0)
 	{
@@ -392,7 +398,7 @@ bool FSimpleTorchTensor::Reshape(TArray<int32> NewShape)
 
 	if (NewDataSize == DataSize)
 	{
-		Dimensions = NewShape;
+		Dimensions = NewShape.Array();
 		InitAddressSpace();
 	}
 	else
@@ -402,7 +408,7 @@ bool FSimpleTorchTensor::Reshape(TArray<int32> NewShape)
 			Cleanup();
 
 			DataSize = NewDataSize;
-			Dimensions = NewShape;
+			Dimensions = NewShape.Array();
 			Data = new float[DataSize];
 
 			InitAddressSpace();
@@ -424,7 +430,7 @@ FSimpleTorchTensor FSimpleTorchTensor::Detach()
 		return FSimpleTorchTensor();
 	}
 
-	TArray<int32> Dims;
+	TSet<int32> Dims;
 	for (const auto& Val : Dimensions) Dims.Add(Val);
 
 	FSimpleTorchTensor ret = FSimpleTorchTensor(Dims);

@@ -1,5 +1,5 @@
 // VR IK Body Plugin
-// (c) Yuri N Kalinin, 2021, ykasczc@gmail.com. All right reserved.
+// (c) Yuri N Kalinin, 2021-2022, ykasczc@gmail.com. All right reserved.
 
 #pragma once
 
